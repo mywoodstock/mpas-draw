@@ -103,6 +103,10 @@
 #define LINE_G			0.0
 #define LINE_B			0.0
 
+#define POINT_R			0.9
+#define POINT_G			0.9
+#define POINT_B			0.9
+
 #define REGL_R			0.0
 #define REGL_G			0.0
 #define REGL_B			0.0
