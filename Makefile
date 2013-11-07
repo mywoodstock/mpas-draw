@@ -1,13 +1,12 @@
 CXX=g++
 #CXXFLAGS= -O3
 CXXFLAGS= -O3 -m64
-#NETCDF=/opt/netcdf/3.6.3/64
+NETCDF=/usr
 
 DBGFLAGS= -g -m64
 
 #OFFSETFLAG=-D_64BITOFFSET
 
-# Select platform
 PLATFORM=_MACOS
 PLATFORM=_LINUX
 

@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <string>
 #include <vector>
+#include <algorithm>
 #ifdef _LINUX
 	#include <unistd.h>
 #endif
@@ -54,6 +55,7 @@ void color_mesh();
 void color_cells();
 void color_triangles();
 void color_edges();
+void color_cell_partitions();
 
 void arrowKeys( int a_keys, int x, int y );
 void keyPressed( unsigned char key, int x, int y );
@@ -76,6 +78,7 @@ void control_sequence();
 //  Global data.
 //
 string filename;
+string part_filename;
 static GLint axis = 1;
 GLint window;
 int drawing = 1;
@@ -86,9 +89,11 @@ double sphere_radius;
 int color_bar = 0;
 double missing_value = -1e34;
 
-double line_factor = 1.002;
+int partition_file = 0;
+
+double line_factor = 1.001;
 double region_line_factor = 1.006;
-double region_center_factor = 1.008;
+double region_center_factor = 1.013;
 double range_factor = 0.80;
 double zNear = 0.1;
 double zFar = 2.5;
@@ -114,7 +119,9 @@ int maxedges;
 int pixel_height;
 int pixel_width;
 
-int edge_field, cell_field, vertex_field;
+int edge_field = -1;
+int cell_field = -1;
+int vertex_field = -1;
 int cur_level = 0;
 int cur_time = 0;
 int cur_screenshot = 1;
@@ -203,7 +210,7 @@ int main ( int argc, char *argv[] ){/*{{{*/
 	//
 	//  Author:
 	//
-	//    John Burkardt, Geoff Womeldorff, Doug Jacobsen
+	//    John Burkardt, Geoff Womeldorff, Doug Jacobsen, Abhinav Sarje
 	//
 	//  Reference:
 	//
@@ -243,7 +250,12 @@ int main ( int argc, char *argv[] ){/*{{{*/
 	{
 		filename = argv[1];
 	}
-	else if (argc == 3)
+	else if (argc == 3) {
+		filename = argv[1];
+		part_filename = argv[2];
+		partition_file = 1;
+	}
+	else if (argc == 4)
 	{
 		filename = argv[1];
 		single_ss = true;
@@ -555,8 +567,8 @@ void single_screenshot ( ){/*{{{*/
 	//
 	//    Doug Jacobsen
 	//
-	
-	color_mesh();
+	//
+	//color_mesh();
 	glutPostRedisplay ( );
 
 	if(single_ss){
@@ -1614,11 +1626,11 @@ void color_cells(){/*{{{*/
 	//
 	//  Modified:
 	//
-	//    30 December 2010
+	//    06 November 2013
 	//
 	//  Author:
 	//
-	//    Doug Jacobsen
+	//    Doug Jacobsen, Abhinav Sarje
 	//
 
 	int i, j, k, o;
@@ -1636,16 +1648,20 @@ void color_cells(){/*{{{*/
 
 	s = 1.0;
 	v = 1.0;
-	if(cell_field == 0){
-		for(i = 0; i < ncells; i++){
-			o = nedgesoncell[i];
-
-			for(j = 0; j < 3*o; j++){
-				cell_colors.push_back(0.8);
-				cell_colors.push_back(0.8);
-				cell_colors.push_back(0.8);
-			} 
-		}
+	if(cell_field == -1){
+		if(partition_file == 1) {
+			color_cell_partitions();
+		} else {
+			for(i = 0; i < ncells; i++){
+				o = nedgesoncell[i];
+	
+				for(j = 0; j < 3*o; j++){
+					cell_colors.push_back(0.8);
+					cell_colors.push_back(0.8);
+					cell_colors.push_back(0.8);
+				} 
+			}
+		} // if
 	} else {
 		netcdf_mpas_read_field(filename, cell_field, cell_values, cur_time, cur_level);
 
@@ -1696,6 +1712,72 @@ void color_cells(){/*{{{*/
 
 	return;
 }/*}}}*/
+
+void color_cell_partitions() {
+	//****************************************************************************80
+	//
+	//  Purpose:
+	//
+	//    COLOR_CELL_PARTITIONS builds the color array used to display the partitioned Voronoi cells
+	//
+	//  Licensing:
+	//
+	//    This code is distributed under the GNU LGPL license.
+	//
+	//  Modified: Wed 06 Nov 2013 02:37:58 PM PST
+	//
+	//    06 November 2013
+	//
+	//  Author:
+	//
+	//    Abhinav Sarje
+	//
+
+	fstream parts(part_filename.c_str());
+	vector<int> part_list;
+	int part_num;
+	while(parts >> part_num) part_list.push_back(part_num);
+	int min_part = part_list[0];
+	int max_part = part_list[0];
+	for(vector<int>::iterator i = part_list.begin(); i != part_list.end(); ++ i) {
+		min_part = ((*i) < min_part) ? (*i) : min_part;
+		max_part = ((*i) > max_part) ? (*i) : max_part;
+	} // for
+	int n_parts = max_part - min_part + 1;
+	vector<int> part_index_mapper;
+	for(int i = 0; i < n_parts; ++ i) part_index_mapper.push_back(i);
+	random_shuffle(part_index_mapper.begin(), part_index_mapper.end());
+	double r, g, b;
+
+	for(int i = 0; i < ncells; ++ i) {
+		if(n_parts < 2) {
+			r = 0.8; g = 0.8; b = 0.8;
+		} else {
+			float x = (float) part_index_mapper[part_list[i]] / n_parts;
+			//float x = (float) rand() / RAND_MAX;
+			r = sin(25 * 3.14159 * x / 24 - 7 * 3.14159 / 32);
+			g = -sin(4 * 3.14159 * x / 3 + 13 * 3.14159 / 16);
+			b = -sin(4 * 3.14159 * x / 3 - 7 * 3.14159 / 8);
+			r = r < 0.0 ? 0.0 : r;
+			g = g < 0.0 ? 0.0 : g;
+			b = b < 0.0 ? 0.0 : b;
+		} // if-else
+
+		int o = nedgesoncell[i];
+		for(int j = 0; j < 3 * o; ++ j){
+			cell_colors.push_back(r);
+			cell_colors.push_back(g);
+			cell_colors.push_back(b);
+		} // for
+	}
+
+	parts.close();
+
+	return;
+
+} // color_cell_partitions()
+
+
 void color_triangles(){/*{{{*/
 	//****************************************************************************80
 	//
@@ -1725,7 +1807,7 @@ void color_triangles(){/*{{{*/
 
 	s = 1.0;
 	v = 1.0;
-	if(vertex_field == 0){
+	if(vertex_field == -1){
 		for(i = 0; i < nvertices; i++){
 			for(j = 0; j < 3; j++){
 				vertex_colors.push_back(0.8);
@@ -1807,7 +1889,7 @@ void color_edges(){/*{{{*/
 
 	s = 1.0;
 	v = 1.0;
-	if(edge_field == 0){
+	if(edge_field == -1){
 		for(i = 0; i < nedges; i++){
 			for(j = 0; j < 6; j++){
 				edge_colors.push_back(0.8);
@@ -1882,19 +1964,19 @@ void arrowKeys( int a_keys, int x, int y ) {/*{{{*/
 
 	switch( a_keys ) {
 		case GLUT_KEY_UP:
-			projElevation = (double)( ( (int)projElevation + 3 ) % 360 );
+			projElevation = (double)( ( (int)projElevation + 1 ) % 360 );
 			break;
 
 		case GLUT_KEY_DOWN:
-			projElevation = (double) ( ( (int)projElevation - 3 ) % 360 );
+			projElevation = (double) ( ( (int)projElevation - 1 ) % 360 );
 			break;
 
 		case GLUT_KEY_RIGHT:
-			projAzimuth = (double) ( ( (int)projAzimuth + 3 ) % 360 );
+			projAzimuth = (double) ( ( (int)projAzimuth + 1 ) % 360 );
 			break;
 
 		case GLUT_KEY_LEFT:
-			projAzimuth = (double) ( ( (int)projAzimuth - 3 ) % 360 );
+			projAzimuth = (double) ( ( (int)projAzimuth - 1 ) % 360 );
 			break;
 
 		case GLUT_KEY_F1:
@@ -2075,19 +2157,19 @@ void keyPressed( unsigned char key, int x, int y ) {/*{{{*/
 			drawing = ( drawing + 1 ) % 3;
 			break;
 		case KEY_COMMA:
-			projDistance += 0.1;
-			zFar += 0.1;
+			projDistance += 0.05;
+			zFar += 0.05;
 			break;
 		case KEY_PERIOD:
-			projDistance -= 0.1;
-			zFar -= 0.1;
+			projDistance -= 0.05;
+			zFar -= 0.05;
 			break;
 		case KEY_v:
 			switch(drawing){
 				case 0:
 					vertex_field = netcdf_mpas_list_nvertex_fields(filename);
 					netcdf_mpas_print_field_info(filename, vertex_field);
-					if(color_bar == 2){
+					if(vertex_field >= 0 && color_bar == 2){
 						build_range(vertex_field);
 						cout << " Range of values: Min = " << ranges.at(vertex_field).at(0) << ", Max = " << ranges.at(vertex_field).at(1) << endl;
 					}
@@ -2095,7 +2177,7 @@ void keyPressed( unsigned char key, int x, int y ) {/*{{{*/
 				case 1:
 					cell_field = netcdf_mpas_list_ncell_fields(filename);
 					netcdf_mpas_print_field_info(filename, cell_field);
-					if(color_bar == 2){
+					if(cell_field >= 0 && color_bar == 2){
 						build_range(cell_field);
 						cout << " Range of values: Min = " << ranges.at(cell_field).at(0) << ", Max = " << ranges.at(cell_field).at(1) << endl;
 					}
@@ -2103,7 +2185,7 @@ void keyPressed( unsigned char key, int x, int y ) {/*{{{*/
 				case 2:
 					edge_field = netcdf_mpas_list_nedge_fields(filename);
 					netcdf_mpas_print_field_info(filename, edge_field);
-					if(color_bar == 2){
+					if(edge_field >= 0 && color_bar == 2){
 						build_range(edge_field);
 						cout << " Range of values: Min = " << ranges.at(edge_field).at(0) << ", Max = " << ranges.at(edge_field).at(1) << endl;
 					}
@@ -2363,10 +2445,12 @@ void drawSphere(double r, int lats, int longs) {/*{{{*/
 
 			glNormal3f(x * zr0, y * zr0, z0);
 			glVertex3f(r * x * zr0, r * y * zr0, r * (z0+z_c));
-			glColor3f(0.5, 0.5, 0.5);
+			glColor3f(205.0/255.0, 190.0/255.0, 112.0/255.0);
 			glNormal3f(x * zr1, y * zr1, z1);
 			glVertex3f(r * x * zr1, r * y * zr1, r * (z1+z_c));
-			glColor3f(0.5, 0.5, 0.5);
+			glColor3f(205.0/255.0, 190.0/255.0, 112.0/255.0);
+			//glColor3f(205.0/255.0, 190.0/255.0, 112.0/255.0); // Light golden rod3
+			//glColor3f(154.0/255.0, 205.0/255.0, 50.0/255.0); // Yellow Green
 		}
 		glEnd();
 	}

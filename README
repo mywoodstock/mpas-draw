@@ -1,5 +1,3 @@
-
-tdr
 MpasDraw.x:
 	This program is used to visualize MPAS grid, and output files using OpenGL.
 
@@ -94,4 +92,3 @@ MpasDraw.x:
 		ESC:
 			The escape key closes the program.
 
-TDR testing commits
