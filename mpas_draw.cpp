@@ -91,7 +91,8 @@ int color_bar = 0;
 double missing_value = -1e34;
 
 int partition_file = 0;
-int ordering = 1;
+int partition_display = 0;
+int ordering = 0;
 
 double line_factor = 1.001;
 double region_line_factor = 1.006;
@@ -211,7 +212,7 @@ int main ( int argc, char *argv[] ){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    01 January 2011
 	//
@@ -326,7 +327,7 @@ void display ( ){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -406,7 +407,7 @@ void mouse ( int btn, int state, int x, int y ){/*{{{*/
 	//    to live with that choice.  This routine alternately pauses rotation,
 	//    or increments the rotation axis by 1, no matter which button is pushed.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2008
 	//
@@ -433,6 +434,7 @@ void mouse ( int btn, int state, int x, int y ){/*{{{*/
 }/*}}}*/
 
 GLfloat line_width;
+GLfloat point_size;
 
 void gl_init ( ){/*{{{*/
 	//****************************************************************************80
@@ -445,7 +447,7 @@ void gl_init ( ){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    01 January 2010
 	//
@@ -460,7 +462,6 @@ void gl_init ( ){/*{{{*/
 	//    A Top-Down Approach with OpenGL,
 	//    Second Edition,
 	//    Addison Wesley, 2000.
-	GLfloat point_size;
 	//
 	//  Set the background to WHITE.
 	//
@@ -517,7 +518,7 @@ void myReshape ( int w, int h ){/*{{{*/
 	//
 	//    MYRESHAPE determines the window mapping.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2008
 	//
@@ -568,7 +569,7 @@ void single_screenshot ( ){/*{{{*/
 	//
 	//    SINGLE_SCREENSHOT takes a single screenshot of the grid, and exits mpas_draw
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    02/08/13
 	//
@@ -608,7 +609,7 @@ void timestamp ( ){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    08 July 2009
 	//
@@ -649,7 +650,7 @@ void build_connectivity(){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -704,7 +705,7 @@ void build_connectivity(){/*{{{*/
 		line_factor = 0.002;
 		cout << "  Points are NOT on a sphere. " << endl;
 	} else {
-		sfc_line_factor = 1.007;
+		sfc_line_factor = 1.0099;
 		cout << "  Points ARE on a sphere. " << endl;
 	}
 
@@ -989,7 +990,10 @@ void build_connectivity(){/*{{{*/
 		for(vector<int>::iterator ic = (*ip).second.begin(); ic != (*ip).second.end(); ++ ic) {
 			cell_centers.push_back(xcell[(*ic)] * sfc_line_factor);
 			cell_centers.push_back(ycell[(*ic)] * sfc_line_factor);
-			cell_centers.push_back(zcell[(*ic)] * sfc_line_factor);
+			if(on_sphere)
+				cell_centers.push_back(zcell[(*ic)] * sfc_line_factor);
+			else
+				cell_centers.push_back(0.005);
 			//if(i != ncells - 1) {
 			//	cell_centers.push_back((xcell[(*ic)] + xcell[(*ic) + 1]) *
 			//							sfc_line_factor * sfc_line_factor / 2.0);
@@ -1296,7 +1300,7 @@ void rescale_cells_and_vertices(){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -1397,7 +1401,7 @@ void draw_triangles ( ){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -1424,7 +1428,7 @@ void draw_cells ( ){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    06 November 2013
 	//
@@ -1439,12 +1443,15 @@ void draw_cells ( ){/*{{{*/
 
 	if(ordering == 1) {
 		glDisableClientState(GL_COLOR_ARRAY);
-		glColor3f(POINT_R, POINT_G, POINT_B);
-		glLineWidth(line_width * 2);
 		glVertexPointer(3, GL_FLOAT, 0, &cell_centers[0]);
+		glLineWidth(line_width * 2);
+		glColor3f(POINT_R, POINT_G, POINT_B);
 		glDrawElements(GL_LINE_STRIP, cell_centers.size() / 3, GL_UNSIGNED_INT, &cell_center_indices[0]);
-//		glDrawArrays(GL_LINE_LOOP, 0, cell_centers.size() / 3);
+		glPointSize(line_width * 6);
+		glColor3f(POINT_R / 1.3, POINT_G / 1.3, POINT_B / 1.3);
+		glDrawElements(GL_POINTS, cell_centers.size() / 3, GL_UNSIGNED_INT, &cell_center_indices[0]);
 		glLineWidth(line_width);
+		glPointSize(point_size);
 		glEnableClientState(GL_COLOR_ARRAY);
 	} // if
 
@@ -1462,7 +1469,7 @@ void draw_edges ( ){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -1489,7 +1496,7 @@ void draw_triangle_lines(){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -1517,7 +1524,7 @@ void draw_cell_lines(){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -1545,7 +1552,7 @@ void draw_edge_lines(){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -1692,7 +1699,7 @@ void color_cells(){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    06 November 2013
 	//
@@ -1717,7 +1724,7 @@ void color_cells(){/*{{{*/
 	s = 1.0;
 	v = 1.0;
 	if(cell_field == -1){
-		if(partition_file == 1) {
+		if(partition_file == 1 && partition_display == 1) {
 			color_cell_partitions();
 		} else {
 			for(i = 0; i < ncells; i++){
@@ -1792,7 +1799,7 @@ void color_cell_partitions() {
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    06 November 2013
 	//
@@ -1857,7 +1864,7 @@ void color_triangles(){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -1940,7 +1947,7 @@ void color_edges(){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -2021,7 +2028,7 @@ void arrowKeys( int a_keys, int x, int y ) {/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -2073,13 +2080,13 @@ void keyPressed( unsigned char key, int x, int y ) {/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
-	//    30 December 2010
+	//    07 November 2013
 	//
 	//  Author:
 	//
-	//    Geoff Womeldorff, Doug Jacobsen
+	//    Geoff Womeldorff, Doug Jacobsen, Abhinav Sarje
 	//
 
 
@@ -2352,6 +2359,13 @@ void keyPressed( unsigned char key, int x, int y ) {/*{{{*/
 		case KEY_Q:
 			control_sequence();
 			break;
+		case KEY_o:
+			ordering = 1 - ordering;
+			break;
+		case KEY_p:
+			partition_display = 1 - partition_display;
+			color_cells();
+			break;
 		default:
 			break;
 	}
@@ -2370,7 +2384,7 @@ void translateView ( double updown, double leftright){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -2392,7 +2406,7 @@ void polarView( double distance, double twist, double elevation, double azimuth 
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
@@ -2418,7 +2432,7 @@ void hsv_to_rgb(float h, float s, float v, float& r, float& g, float& b){/*{{{*/
 	//
 	//    This code is distributed under the GNU LGPL license.
 	//
-	//  Modified: Thu 07 Nov 2013 02:41:53 PM PST
+	//  Modified: Thu 07 Nov 2013 03:33:38 PM PST
 	//
 	//    30 December 2010
 	//
